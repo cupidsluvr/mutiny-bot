@@ -117,6 +117,16 @@ client.on('messageCreate', (message) => {
 
     message.channel.send(output.trim());
   }
+
+  // CLEAR COMMAND
+  if (command === 'clear') {
+    if (!fs.existsSync(LOG_FILE)) {
+      return message.reply('⚠️ Inventory is already empty.');
+    }
+
+    fs.writeFileSync(LOG_FILE, '[]');
+    return message.reply('🗑️ Warehouse inventory has been cleared.');
+  }
 });
 
 client.login(process.env.TOKEN);
