@@ -12,5 +12,12 @@
     "action": "store",
     "item": "AKs",
     "amount": "5"
+  },
+  {
+    "timestamp": "2025-07-08T07:26:41.170Z",
+    "user": "cupid.",
+    "action": "store",
+    "item": "PKM",
+    "amount": "1"
   }
 ]
