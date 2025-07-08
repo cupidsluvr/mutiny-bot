@@ -51,6 +51,7 @@ client.on('messageCreate', async (message) => {
   const args = message.content.trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
+  // Add or remove items
   if (command === '!additem' || command === '!removeitem') {
     const itemName = args[0];
     const amount = parseInt(args[1]);
@@ -72,6 +73,33 @@ client.on('messageCreate', async (message) => {
 
     logToFile(logEntry);
     message.channel.send(`✅ ${message.author.username} ${logEntry.action} ${amount} ${itemName}(s) [${category}]`);
+  }
+
+  // 📦 View inventory totals
+  if (command === '!inventory') {
+    const logPath = './warehouse_logs.json';
+
+    if (!fs.existsSync(logPath)) {
+      return message.reply('📭 No inventory log found yet.');
+    }
+
+    const data = fs.readFileSync(logPath);
+    const logs = JSON.parse(data);
+
+    const totals = {};
+
+    logs.forEach(entry => {
+      const key = entry.item.toUpperCase();
+      if (!totals[key]) totals[key] = 0;
+      totals[key] += (entry.action === 'added' ? entry.amount : -entry.amount);
+    });
+
+    let output = '📦 **Warehouse Inventory:**\n\n';
+    for (const [item, count] of Object.entries(totals)) {
+      output += `${item}: ${count}\n`;
+    }
+
+    message.channel.send(output);
   }
 });
 
