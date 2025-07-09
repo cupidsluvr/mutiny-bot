@@ -1,88 +1,110 @@
-require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
+
 const fs = require('fs');
-const path = require('path');
+const { Client, GatewayIntentBits } = require('discord.js');
 const stringSimilarity = require('string-similarity');
+require('dotenv').config();
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
-const inventoryPath = path.join(__dirname, 'warehouse_logs.json');
+const inventoryFile = './inventory.json';
 
-// Define categories
-const categories = {
+const CATEGORIES = {
   GUNS: ["Tommy's", "AKs", "Double Barrel Shotguns", "Uzis", "MPX", "Tec", "WMs", "VPs"],
   EXPLOSIVES: ["Molly's", "C4's"],
   AMMO: ["7.62X54", "7.62X39", "9MM", ".45", "12 Gauge Shells"],
   ACCESSORIES: ["Pistol Suppressor", "SMG Suppressor", "Rifle Suppressor"]
 };
 
-// Load inventory
-let inventory = {};
-if (fs.existsSync(inventoryPath)) {
-  inventory = JSON.parse(fs.readFileSync(inventoryPath));
-}
-
-// Save inventory
-function saveInventory() {
-  fs.writeFileSync(inventoryPath, JSON.stringify(inventory, null, 2));
-}
-
-// Find closest match using fuzzy matching
-function findClosestMatch(item) {
-  const allItems = Object.values(categories).flat();
-  const match = stringSimilarity.findBestMatch(item.toLowerCase(), allItems.map(i => i.toLowerCase()));
-  const index = allItems.map(i => i.toLowerCase()).indexOf(match.bestMatch.target);
-  return allItems[index];
-}
-
-// Get category for item
-function getCategory(item) {
-  for (const [category, items] of Object.entries(categories)) {
-    if (items.includes(item)) return category;
+function loadInventory() {
+  if (fs.existsSync(inventoryFile)) {
+    return JSON.parse(fs.readFileSync(inventoryFile));
   }
-  return 'Other';
+  return {};
 }
 
-// Command handler
-client.on('messageCreate', async (message) => {
-  if (!message.content.startsWith('!') || message.author.bot) return;
-  const args = message.content.slice(1).trim().split(/ +/);
+function saveInventory(inv) {
+  fs.writeFileSync(inventoryFile, JSON.stringify(inv, null, 2));
+}
+
+function findClosestItem(itemName) {
+  const allItems = Object.values(CATEGORIES).flat();
+  const match = stringSimilarity.findBestMatch(itemName, allItems).bestMatch;
+  return match.rating >= 0.5 ? match.target : null;
+}
+
+function getCategoryForItem(itemName) {
+  for (const [category, items] of Object.entries(CATEGORIES)) {
+    if (items.includes(itemName)) return category;
+  }
+  return 'UNCATEGORIZED';
+}
+
+function formatInventory(inv) {
+  let formatted = '📦 **Warehouse Inventory:**\n';
+  for (const [category, items] of Object.entries(CATEGORIES)) {
+    formatted += `\n**${category}**\n`;
+    let found = false;
+    for (const item of items) {
+      if (inv[item] !== undefined) {
+        formatted += `${item}: ${inv[item]}\n`;
+        found = true;
+      }
+    }
+    if (!found) {
+      formatted += '_No items in this category._\n';
+    }
+  }
+  return formatted;
+}
+
+client.on('ready', () => {
+  console.log(`Bot logged in as ${client.user.tag}`);
+});
+
+client.on('messageCreate', async (msg) => {
+  if (msg.author.bot) return;
+  const args = msg.content.trim().split(/ +/);
   const command = args.shift().toLowerCase();
+  const inventory = loadInventory();
 
-  if (command === 'add') {
-    const nameRaw = args.slice(0, -1).join(' ');
-    const quantity = parseInt(args.slice(-1)[0]);
-    if (isNaN(quantity)) return message.reply('❌ Please provide a valid quantity.');
-
-    const item = findClosestMatch(nameRaw);
-    inventory[item] = (inventory[item] || 0) + quantity;
-    saveInventory();
-    return message.reply(`✅ Added ${quantity} ${item} to inventory.`);
+  if (command === '!inventory') {
+    msg.channel.send(formatInventory(inventory));
   }
 
-  if (command === 'clear') {
-    inventory = {};
-    saveInventory();
-    return message.reply('🧹 Inventory has been cleared.');
-  }
-
-  if (command === 'inventory') {
-    if (Object.keys(inventory).length === 0) return message.reply('📦 Warehouse is empty.');
-
-    const sorted = {};
-    for (const [item, count] of Object.entries(inventory)) {
-      const category = getCategory(item);
-      if (!sorted[category]) sorted[category] = [];
-      sorted[category].push(`${item}: ${count}`);
+  if (command === '!add' || command === '!remove') {
+    if (args.length < 2) {
+      return msg.channel.send('Usage: !add <item> <amount>');
     }
 
-    const display = Object.entries(sorted).map(([category, lines]) =>
-      `**${category}:**\n${lines.join('\n')}`
-    ).join('\n\n');
+    const inputName = args.slice(0, -1).join(' ');
+    const amount = parseInt(args[args.length - 1]);
 
-    return message.reply({ content: `📦 **Warehouse Inventory:**\n\n${display}` });
+    if (isNaN(amount)) {
+      return msg.channel.send('Amount must be a number.');
+    }
+
+    const matchedItem = findClosestItem(inputName);
+    if (!matchedItem) {
+      return msg.channel.send('Item not recognized.');
+    }
+
+    inventory[matchedItem] = inventory[matchedItem] || 0;
+    if (command === '!add') {
+      inventory[matchedItem] += amount;
+      msg.channel.send(`✅ Added ${amount} ${matchedItem} to inventory.`);
+    } else {
+      inventory[matchedItem] -= amount;
+      msg.channel.send(`🗑️ Removed ${amount} ${matchedItem} from inventory.`);
+    }
+
+    saveInventory(inventory);
+  }
+
+  if (command === '!clear') {
+    saveInventory({});
+    msg.channel.send('🧹 Inventory cleared.');
   }
 });
 
