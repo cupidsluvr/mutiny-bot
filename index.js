@@ -11,10 +11,10 @@ const client = new Client({
 const inventoryFile = './inventory.json';
 
 const CATEGORIES = {
-  GUNS: ["Tommy's", "AKs", "Double Barrel Shotguns", "Uzis", "MPX", "Tec", "WMs","APS", "SPS", "DRACOS", "VPs", "SCORPIONS", "PKMS" ],
+  GUNS: ["Tommy's", "AKs", "Double Barrel Shotguns", "Uzis", "MPX", "Tec", "WMs","APS", "SPS", "DRACOS", "VPs", "SCORPIONS", "PKMS", "FAMAS", "SPECIAL CARBINE", "AK-15" ],
   EXPLOSIVES: ["Molly's", "C4's", "EMP", "THERMITE"],
-  DRUGS: ["TUSI", "DEATH METH", "COCAINE", "HEROIN", "MDMA"]
-  AMMO: ["7.62X54", "7.62X39", "9MM", ".45", "12 Gauge Shells"],
+  DRUGS: ["TUSI", "DEATH METH", "COCAINE", "HEROIN", "MDMA"],
+  AMMO: ["7.62X54", "7.62X39", "9MM", ".45", "12 Gauge Shells", ".556"],
   ACCESSORIES: ["Pistol Suppressor", "SMG Suppressor", "Rifle Suppressor", "OBD", "TRANSCEIVERS"]
 };
 
